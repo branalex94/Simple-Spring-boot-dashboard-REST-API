@@ -2,6 +2,7 @@ package com.brandon.simple_dashboard_api.services;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,29 +13,45 @@ import org.springframework.web.server.ResponseStatusException;
 import com.brandon.simple_dashboard_api.entities.User;
 import com.brandon.simple_dashboard_api.entities.UserDTO;
 import com.brandon.simple_dashboard_api.entities.UserResponseDTO;
-import com.brandon.simple_dashboard_api.utils.GeneralValidations;
+import com.brandon.simple_dashboard_api.errors.EmailExistsException;
+import com.brandon.simple_dashboard_api.repositories.UserRepository;
 import com.brandon.simple_dashboard_api.utils.Messages;
 import com.brandon.simple_dashboard_api.utils.UserFieldsValidationConstants;
+
+import jakarta.validation.Validator;
 
 @Service()
 public class UserService {
 
+	private UserRepository userRepository;
+	private Validator validator;
+
+	public UserService(UserRepository userRepository, Validator validator) {
+		this.userRepository = userRepository;
+	}
+
 	public void validateCreateUserFields(UserDTO user, List<User> users)
 			throws ResponseStatusException {
-		GeneralValidations.validateString(user.firstName(), "primer nombre",
-				UserFieldsValidationConstants.NAME_MIN,
-				UserFieldsValidationConstants.NAME_MAX);
-		GeneralValidations.validateString(user.lastName(), "primer apellido",
-				UserFieldsValidationConstants.NAME_MIN,
-				UserFieldsValidationConstants.NAME_MAX);
-		GeneralValidations.validateString(user.email(), "correo",
-				UserFieldsValidationConstants.EMAIL_MIN,
-				UserFieldsValidationConstants.EMAIL_MAX);
-		GeneralValidations.validateString(user.phone(), "celular",
-				UserFieldsValidationConstants.PHONE_MIN,
-				UserFieldsValidationConstants.PHONE_MAX);
-		validateUserEmail(user.email(), users);
-		if (users.stream().anyMatch(u -> u.getEmail().equals(user.email()))) {
+//		GeneralValidations.validateString(user.firstName(), "primer nombre",
+//				UserFieldsValidationConstants.NAME_MIN,
+//				UserFieldsValidationConstants.NAME_MAX);
+//		GeneralValidations.validateString(user.lastName(), "primer apellido",
+//				UserFieldsValidationConstants.NAME_MIN,
+//				UserFieldsValidationConstants.NAME_MAX);
+//		GeneralValidations.validateString(user.email(), "correo",
+//				UserFieldsValidationConstants.EMAIL_MIN,
+//				UserFieldsValidationConstants.EMAIL_MAX);
+//		GeneralValidations.validateString(user.phone(), "celular",
+//				UserFieldsValidationConstants.PHONE_MIN,
+//				UserFieldsValidationConstants.PHONE_MAX);
+//		Set<ConstraintViolation<User>> violations = validator
+//				.validate(newUserFromDTO);
+//		if (!violations.isEmpty()) {
+//			throw new ConstraintViolationException(violations);
+//		}
+		validateUserEmail(user.email());
+		Optional<User> findUser = userRepository.findByEmail(user.email());
+		if (!findUser.isEmpty()) {
 			Messages.throwResponseStatusWithMessage(HttpStatus.BAD_REQUEST,
 					"Este correo ya se encuentra registrado.");
 		}
@@ -43,20 +60,20 @@ public class UserService {
 	public void validateUpdateUserFields(UserDTO user, User foundUser,
 			List<User> users) throws ResponseStatusException {
 
-		GeneralValidations.validateString(user.firstName(), "primer nombre",
-				UserFieldsValidationConstants.NAME_MIN,
-				UserFieldsValidationConstants.NAME_MAX);
-		GeneralValidations.validateString(user.lastName(), "primer apellido",
-				UserFieldsValidationConstants.NAME_MIN,
-				UserFieldsValidationConstants.NAME_MAX);
-		GeneralValidations.validateString(user.email(), "correo",
-				UserFieldsValidationConstants.EMAIL_MIN,
-				UserFieldsValidationConstants.EMAIL_MAX);
-		GeneralValidations.validateString(user.phone(), "celular",
-				UserFieldsValidationConstants.PHONE_MIN,
-				UserFieldsValidationConstants.PHONE_MAX);
+//		GeneralValidations.validateString(user.firstName(), "primer nombre",
+//				UserFieldsValidationConstants.NAME_MIN,
+//				UserFieldsValidationConstants.NAME_MAX);
+//		GeneralValidations.validateString(user.lastName(), "primer apellido",
+//				UserFieldsValidationConstants.NAME_MIN,
+//				UserFieldsValidationConstants.NAME_MAX);
+//		GeneralValidations.validateString(user.email(), "correo",
+//				UserFieldsValidationConstants.EMAIL_MIN,
+//				UserFieldsValidationConstants.EMAIL_MAX);
+//		GeneralValidations.validateString(user.phone(), "celular",
+//				UserFieldsValidationConstants.PHONE_MIN,
+//				UserFieldsValidationConstants.PHONE_MAX);
 
-		validateUserEmail(user.email(), users);
+		validateUserEmail(user.email());
 
 		if (users.stream().anyMatch(u -> u.getEmail().equals(user.email()))
 				&& !user.email().equals(foundUser.getEmail())) {
@@ -65,7 +82,7 @@ public class UserService {
 		}
 	}
 
-	public void validateUserEmail(String email, List<User> users) {
+	public void validateUserEmail(String email) {
 		Pattern pattern = Pattern
 				.compile(UserFieldsValidationConstants.EMAIL_REGEX_PATTERN);
 		Matcher matcher = pattern.matcher(email);
@@ -100,6 +117,57 @@ public class UserService {
 				user.getSecondName(), user.getLastName(),
 				user.getSecondLastName(), user.getPhone(), user.getEmail(),
 				user.getId());
+	}
+
+	public List<UserResponseDTO> getUsers() {
+		return userRepository.findAll().stream()
+				.map(u -> generateUserResponseDTOfromUser(u)).toList();
+	}
+
+	public UserResponseDTO getUserById(int id) throws ResponseStatusException {
+		Optional<User> findUser = userRepository.findById(id);
+		if (findUser.isEmpty()) {
+			Messages.throwResponseStatusWithMessage(HttpStatus.NOT_FOUND,
+					"Usuario no encontrado");
+		}
+		return generateUserResponseDTOfromUser(findUser.get());
+	}
+
+	public void addUser(UserDTO newUser) throws ResponseStatusException {
+		User newUserFromDTO = generateUserFromDTO(newUser,
+				userRepository.findAll());
+		if (!userRepository.findByEmail(newUser.email()).isEmpty()) {
+//			Messages.throwResponseStatusWithMessage(HttpStatus.NOT_FOUND,
+//					"Este correo ya se encuentra registrado.");
+			throw new EmailExistsException(
+					"Este correo ya se encuentra registrado.");
+		}
+		userRepository.save(newUserFromDTO);
+	}
+
+	public void updateUser(int id, UserDTO user)
+			throws ResponseStatusException {
+		Optional<User> findUser = userRepository.findById(id);
+		if (findUser.isEmpty()) {
+			Messages.throwResponseStatusWithMessage(HttpStatus.NOT_FOUND,
+					"Usuario no encontrado");
+		}
+		Optional<User> userByEmail = userRepository.findByEmail(user.email());
+		if (!userByEmail.isEmpty()) {
+			Messages.throwResponseStatusWithMessage(HttpStatus.NOT_FOUND,
+					"Este correo ya se encuentra registrado");
+		}
+		User newUser = generateUserFromDTO(user, userRepository.findAll());
+		userRepository.save(newUser);
+	}
+
+	public void deleteUser(int id) {
+		Optional<User> findUser = userRepository.findById(id);
+		if (findUser.isEmpty()) {
+			Messages.throwResponseStatusWithMessage(HttpStatus.NOT_FOUND,
+					"Usuario no encontrado");
+		}
+		userRepository.deleteById(id);
 	}
 
 }

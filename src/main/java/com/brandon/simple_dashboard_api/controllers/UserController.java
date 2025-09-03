@@ -13,40 +13,43 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.brandon.simple_dashboard_api.entities.UserDTO;
 import com.brandon.simple_dashboard_api.entities.UserResponseDTO;
-import com.brandon.simple_dashboard_api.repositories.UserRepository;
+import com.brandon.simple_dashboard_api.services.UserService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
 
-	private UserRepository userRepository;
+	private UserService userService;
 
-	public UserController(UserRepository userRepository) {
-		this.userRepository = userRepository;
+	public UserController(UserService userService) {
+		this.userService = userService;
 	}
 
 	@GetMapping("")
 	public List<UserResponseDTO> getUsers() {
-		return userRepository.getUsers();
+		return userService.getUsers();
 	}
 
 	@GetMapping("/{id}")
 	public UserResponseDTO getUserById(@PathVariable int id) {
-		return userRepository.getUserById(id);
+		return userService.getUserById(id);
 	}
 
 	@PostMapping("")
-	public void addUser(@RequestBody UserDTO user) {
-		userRepository.addUser(user);
+	public void addUser(@Valid @RequestBody UserDTO user) {
+		userService.addUser(user);
 	}
 
 	@PutMapping("/{id}")
-	public void updateUser(@PathVariable int id, @RequestBody UserDTO user) {
-		userRepository.updateUser(id, user);
+	public void updateUser(@PathVariable int id,
+			@Valid @RequestBody UserDTO user) {
+		userService.updateUser(id, user);
 	}
 
 	@DeleteMapping("/{id}")
 	public void deleteUser(@PathVariable int id) {
-		this.userRepository.deleteUser(id);
+		userService.deleteUser(id);
 	}
 }

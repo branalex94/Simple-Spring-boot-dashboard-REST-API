@@ -2,13 +2,41 @@ package com.brandon.simple_dashboard_api.entities;
 
 import java.time.LocalDateTime;
 
+import com.brandon.simple_dashboard_api.utils.UserFieldsValidationConstants;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
+
+@Entity()
+@Table(name = "users")
 public class User {
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
 	private int id;
+	@Size(min = UserFieldsValidationConstants.NAME_MIN, max = UserFieldsValidationConstants.NAME_MAX)
+
+	@Size(min = UserFieldsValidationConstants.NAME_MIN, max = UserFieldsValidationConstants.NAME_MAX)
 	private String firstName;
+
+	@Size(min = UserFieldsValidationConstants.NAME_MIN, max = UserFieldsValidationConstants.NAME_MAX)
 	private String secondName;
+
+	@Size(min = UserFieldsValidationConstants.NAME_MIN, max = UserFieldsValidationConstants.NAME_MAX)
 	private String lastName;
+
+	@Size(min = UserFieldsValidationConstants.NAME_MIN, max = UserFieldsValidationConstants.NAME_MAX)
 	private String secondLastName;
+
+	@Column(unique = true)
+	@Size(min = UserFieldsValidationConstants.EMAIL_MIN, max = UserFieldsValidationConstants.EMAIL_MAX)
 	private String email;
+
+	@Size(min = UserFieldsValidationConstants.PHONE_MIN, max = UserFieldsValidationConstants.PHONE_MAX)
 	private String phone;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
